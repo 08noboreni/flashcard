@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Phrase Cards</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* --- Setup Screen --- */
+  #setup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+  #setup h1 { font-size: 1.4rem; color: #a0a0ff; }
+  #setup label { font-size: 0.9rem; color: #888; text-align: center; line-height: 1.6; }
+  #setup input[type="text"] {
+    width: 100%;
+    max-width: 500px;
+    padding: 0.8rem 1rem;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+  }
+  #setup button {
+    padding: 0.8rem 2rem;
+    border: none;
+    border-radius: 8px;
+    background: #4a4ae0;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #setup button:active { background: #3a3ac0; }
+  #setup .error { color: #ff6b6b; font-size: 0.85rem; min-height: 1.2em; }
+  #setup .hint {
+    font-size: 0.75rem;
+    color: #666;
+    max-width: 500px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* --- Header --- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: #16162a;
+    border-bottom: 1px solid #222;
+    flex-shrink: 0;
+  }
+  header .counter { font-size: 0.85rem; color: #888; }
+  header .actions { display: flex; gap: 0.6rem; }
+  header button {
+    background: none;
+    border: 1px solid #333;
+    color: #aaa;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  header button:active { background: #2a2a4a; }
+  header button.active { border-color: #6a6af0; color: #8a8aff; }
+
+  /* --- Card Area --- */
+  #card-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 440px;
+    min-height: 260px;
+    background: #1e1e36;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    position: relative;
+  }
+  .card:active { transform: scale(0.97); }
+
+  .card .lang-label {
+    position: absolute;
+    top: 1rem;
+    left: 1.2rem;
+    font-size: 0.7rem;
+    color: #555;
+    letter-spacing: 0.05em;
+  }
+
+  .card .japanese {
+    font-size: 1.3rem;
+    line-height: 1.7;
+    text-align: center;
+    color: #d0d0ff;
+  }
+
+  .card .english-list {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+  }
+  .card.flipped .japanese { display: none; }
+  .card.flipped .english-list { display: flex; }
+
+  .english-item {
+    background: #262648;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #c8f0c8;
+    text-align: center;
+  }
+
+  .card .tap-hint {
+    position: absolute;
+    bottom: 0.8rem;
+    font-size: 0.7rem;
+    color: #444;
+  }
+
+  /* --- Navigation --- */
+  #nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2.5rem;
+    padding: 1rem;
+    background: #16162a;
+    border-top: 1px solid #222;
+    flex-shrink: 0;
+  }
+  #nav button {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1px solid #333;
+    background: #1e1e36;
+    color: #aaa;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #nav button:active { background: #2a2a4a; }
+  #nav button:disabled { opacity: 0.3; }
+
+  /* --- Loading --- */
+  #loading {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0f0f1a;
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #888;
+  }
+  #loading.show { display: flex; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #333;
+    border-top-color: #6a6af0;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Setup -->
+<div id="setup">
+  <h1>Phrase Cards</h1>
+  <label>
+    Google Spreadsheet CSV URL<br>
+  </label>
+  <input type="text" id="csv-url" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+  <div class="hint">
+    Spreadsheet: A=Japanese, B=English<br>
+    同じ日本語を複数行に書くと、1枚のカードに複数の英文が表示されます。<br><br>
+    公開方法: [ファイル] → [共有] → [ウェブに公開] → CSV形式を選択 → URLをコピー
+  </div>
+  <button onclick="startApp()">OK</button>
+  <div class="error" id="setup-error"></div>
+</div>
+
+<!-- Main App -->
+<div id="app" style="display:none; flex-direction:column; height:100%;">
+  <header>
+    <span class="counter" id="counter">1 / 1</span>
+    <div class="actions">
+      <button id="btn-shuffle" onclick="toggleShuffle()">Shuffle</button>
+      <button onclick="reloadData()">Reload</button>
+    </div>
+  </header>
+
+  <div id="card-area">
+    <div class="card" id="card" onclick="flipCard()">
+      <span class="lang-label" id="lang-label">Japanese</span>
+      <div class="japanese" id="card-ja"></div>
+      <div class="english-list" id="card-en"></div>
+      <span class="tap-hint" id="tap-hint">tap to reveal</span>
+    </div>
+  </div>
+
+  <div id="nav">
+    <button id="btn-prev" onclick="prevCard()">&#9664;</button>
+    <button id="btn-next" onclick="nextCard()">&#9654;</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading"><div class="spinner"></div><span>Loading...</span></div>
+
+<script>
+const STORAGE_KEY = 'phrasecard_csv_url';
+
+let cards = [];      // [{ja: string, en: string[]}]
+let order = [];      // index array (for shuffle)
+let pos = 0;
+let shuffled = false;
+
+// --- Setup ---
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    document.getElementById('csv-url').value = saved;
+  }
+});
+
+async function startApp() {
+  const url = document.getElementById('csv-url').value.trim();
+  if (!url) {
+    document.getElementById('setup-error').textContent = 'URLを入力してください';
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, url);
+  await loadCSV(url);
+}
+
+// --- CSV ---
+
+async function loadCSV(url) {
+  showLoading(true);
+  document.getElementById('setup-error').textContent = '';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    parseCSV(text);
+    if (cards.length === 0) throw new Error('No data');
+    document.getElementById('setup').style.display = 'none';
+    const app = document.getElementById('app');
+    app.style.display = 'flex';
+    resetOrder();
+    pos = 0;
+    renderCard();
+  } catch (e) {
+    document.getElementById('setup-error').textContent = 'Error: ' + e.message;
+    document.getElementById('setup').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+  showLoading(false);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const map = new Map(); // ja -> en[]
+  const jaOrder = [];    // preserve first-seen order
+
+  for (let i = 0; i < lines.length; i++) {
+    const row = parseCSVLine(lines[i]);
+    if (row.length < 2) continue;
+    const ja = row[0].trim();
+    const en = row[1].trim();
+    if (!ja || !en) continue;
+    // skip header row
+    if (i === 0 && isHeaderRow(ja, en)) continue;
+    if (!map.has(ja)) {
+      map.set(ja, []);
+      jaOrder.push(ja);
+    }
+    map.get(ja).push(en);
+  }
+
+  cards = jaOrder.map(ja => ({ ja, en: map.get(ja) }));
+}
+
+function isHeaderRow(a, b) {
+  const h = (a + b).toLowerCase();
+  return h.includes('japanese') || h.includes('english') || h.includes('日本語') || h.includes('英語');
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuote) {
+      if (c === '"' && line[i + 1] === '"') {
+        cur += '"'; i++;
+      } else if (c === '"') {
+        inQuote = false;
+      } else {
+        cur += c;
+      }
+    } else {
+      if (c === '"') {
+        inQuote = true;
+      } else if (c === ',') {
+        result.push(cur); cur = '';
+      } else if (c === '\r') {
+        // skip
+      } else {
+        cur += c;
+      }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// --- Card Logic ---
+
+function resetOrder() {
+  order = cards.map((_, i) => i);
+  if (shuffled) shuffle(order);
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function renderCard() {
+  const card = document.getElementById('card');
+  const idx = order[pos];
+  const data = cards[idx];
+
+  card.classList.remove('flipped');
+  document.getElementById('lang-label').textContent = 'Japanese';
+  document.getElementById('tap-hint').textContent = 'tap to reveal';
+
+  document.getElementById('card-ja').textContent = data.ja;
+
+  const enList = document.getElementById('card-en');
+  enList.innerHTML = '';
+  data.en.forEach(en => {
+    const div = document.createElement('div');
+    div.className = 'english-item';
+    div.textContent = en;
+    enList.appendChild(div);
+  });
+
+  document.getElementById('counter').textContent = `${pos + 1} / ${cards.length}`;
+  document.getElementById('btn-prev').disabled = (pos === 0);
+  document.getElementById('btn-next').disabled = (pos === cards.length - 1);
+}
+
+function flipCard() {
+  const card = document.getElementById('card');
+  const flipped = card.classList.toggle('flipped');
+  document.getElementById('lang-label').textContent = flipped ? 'English' : 'Japanese';
+  document.getElementById('tap-hint').textContent = flipped ? 'tap to go back' : 'tap to reveal';
+}
+
+function nextCard() {
+  if (pos < cards.length - 1) { pos++; renderCard(); }
+}
+
+function prevCard() {
+  if (pos > 0) { pos--; renderCard(); }
+}
+
+function toggleShuffle() {
+  shuffled = !shuffled;
+  document.getElementById('btn-shuffle').classList.toggle('active', shuffled);
+  pos = 0;
+  resetOrder();
+  renderCard();
+}
+
+async function reloadData() {
+  const url = localStorage.getItem(STORAGE_KEY);
+  if (url) await loadCSV(url);
+}
+
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+}
+
+// --- Swipe ---
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.getElementById('card-area').addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.getElementById('card-area').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (dx < 0) nextCard();
+    else prevCard();
+  }
+}, { passive: true });
+</script>
+</body>
+</html>
